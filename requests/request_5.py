@@ -1,43 +1,45 @@
-import sqlite3
 
-def get_bookings_within_dates(check_in: str, check_out: str):
+from sqlmodel import SQLModel, Field, create_engine, Session, select
+
+# Определяем модели для таблиц (как в вашем коде)
+class Guest(SQLModel, table=True):
+    id_Гостя: int = Field(default=None, primary_key=True)
+    Имя: str 
+    Фамилия: str 
+    Номер_телефона: str 
+    Email: str 
+    Дата_рождения: str 
+    Паспорт: str 
+
+class Booking(SQLModel, table=True):
+    id_Бронирования: int = Field(default=None, primary_key=True)
+    id_Номер: int = Field(default=None, foreign_key="Room.id_Номер")
+    id_Гостя: int = Field(default=None, foreign_key="Guest.id_Гостя")
+    Дата_заезда: str 
+    Дата_выезда: str 
+    Статус_бронирования: str 
+
+# Создаем подключение к базе данных
+engine = create_engine('sqlite:///hotel_database.db')
+
+app = FastAPI()
+
+def update_booking_status(booking_id: int, new_status: str) -> bool:
     """
-    Получает информацию о бронированиях, которые пересекаются с заданными датами.
+    Обновляет статус бронирования по ID.
 
-    :param check_in: Дата заезда в формате 'YYYY-MM-DD'.
-    :param check_out: Дата выезда в формате 'YYYY-MM-DD'.
-    :return: Список кортежей с информацией о бронированиях.
+    :param booking_id: ID записи бронирования для обновления.
+    :param new_status: Новый статус бронирования.
+    :return: True, если статус был успешно обновлен, иначе False.
     """
-    # Создаем подключение к базе данных
-    conn = sqlite3.connect('..\hotel_database.db')
-    cursor = conn.cursor()
+    with Session(engine) as session:
+        statement = select(Booking).where(Booking.id_Бронирования == booking_id)
+        booking = session.exec(statement).first()
 
-    # SQL-запрос для получения информации о бронированиях
-    query = '''
-    SELECT Booking.id_Бронирования, Guest.Имя, Guest.Фамилия, Booking.Дата_заезда, Booking.Дата_выезда, Booking.id_Номер
-    FROM Booking
-    JOIN Guest ON Booking.id_Гостя = Guest.id_Гостя
-    WHERE Booking.Дата_заезда < ? AND Booking.Дата_выезда > ?;
-    '''
-
-    # Выполнение запроса с параметрами
-    cursor.execute(query, (check_out, check_in))
-    results = cursor.fetchall()  # Получаем все результаты
-
-    # Закрываем соединение
-    conn.close()
-
-    return results
-
-# Пример использования функции
-if __name__ == "__main__":
-    check_in_date = '2024-12-20'  # Замените на нужную дату заезда
-    check_out_date = '2024-12-25'  # Замените на нужную дату выезда
-
-    bookings = get_bookings_within_dates(check_in_date, check_out_date)
-
-
-    print(f"Информаци о бронировании номеров в следующие даты {check_in_date} - {check_out_date}")
-    # Выводим результаты
-    for row in bookings:
-        print(f"\nФИО: {row[1]} {row[2]}\nНомер: {row[5]} \nДата заезда: {row[3]} \nДата выезда: {row[4]}")
+        if booking:
+            booking.Статус_бронирования = new_status
+            session.add(booking)  # Обновляем запись
+            session.commit()  # Сохраняем изменения
+            return True
+        else:
+            return False  # Запись не найдена

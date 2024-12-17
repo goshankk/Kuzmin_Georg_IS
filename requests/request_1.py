@@ -1,4 +1,40 @@
-import sqlite3
+from sqlmodel import SQLModel, create_engine, Session, Field
+
+class Guest(SQLModel, table=True):
+    id_Гостя: int = Field(default=None, primary_key=True)
+    Имя: str 
+    Фамилия: str 
+    Номер_телефона: str 
+    Email: str 
+    Дата_рождения: str 
+    Паспорт: str 
+
+class Booking(SQLModel, table=True):
+    id_Бронирования: int = Field(default=None, primary_key=True)
+    id_Номер: int = Field(default=None, foreign_key="Room.id_Номер")
+    id_Гостя: int = Field(default=None, foreign_key="Guest.id_Гостя")
+    Дата_заезда: str 
+    Дата_выезда: str 
+    Статус_бронирования: str 
+
+class Hotel(SQLModel, table=True):
+    id_Гостиницы: int = Field(default=None, primary_key=True)
+    Название: str 
+    Адрес: str 
+    Номер_телефона: str 
+    Общее_количество_номеров: int
+    Дополнительная_информация: str 
+
+class Room(SQLModel, table=True):
+    id_Номер: int = Field(default=None, primary_key=True)
+    id_Гостиницы: int = Field(default=None, foreign_key="Hotel.id_Гостиницы")
+    Тип: str 
+    Статус: str 
+    Цена_за_ночь: float 
+    Дополнительная_информация: str 
+
+# Создаем подключение к базе данных
+engine = create_engine('sqlite:///hotel_database.db')
 
 def fetch_all_data():
     """
@@ -6,28 +42,11 @@ def fetch_all_data():
 
     :return: Словарь с данными из всех таблиц.
     """
-    # Создаем подключение к базе данных
-    conn = sqlite3.connect('..\hotel_database.db')
-    cursor = conn.cursor()
-
-    # Запрос для выборки всех гостей
-    cursor.execute('SELECT * FROM Guest')
-    guests = cursor.fetchall()  # Получаем всех гостей
-
-    # Запрос для выборки всех бронирований
-    cursor.execute('SELECT * FROM Booking')
-    bookings = cursor.fetchall()  # Получаем все бронирования
-
-    # Запрос для выборки всех гостиниц
-    cursor.execute('SELECT * FROM Hotel')
-    hotels = cursor.fetchall()  # Получаем все гостиницы
-
-    # Запрос для выборки всех номеров
-    cursor.execute('SELECT * FROM Room')
-    rooms = cursor.fetchall()  # Получаем все номера
-
-    # Закрываем соединение
-    conn.close()
+    with Session(engine) as session:
+        guests = session.query(Guest).all()  # Получаем всех гостей
+        bookings = session.query(Booking).all()  # Получаем все бронирования
+        hotels = session.query(Hotel).all()  # Получаем все гостиницы
+        rooms = session.query(Room).all()  # Получаем все номера
 
     return {
         "guests": guests,
